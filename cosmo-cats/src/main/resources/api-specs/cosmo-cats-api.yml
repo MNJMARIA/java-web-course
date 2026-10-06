@@ -1,0 +1,224 @@
+openapi: 3.0.3
+info:
+  title: Cosmo Cats Intergalactic Marketplace API
+  description: API for managing space products
+  version: 1.0.0
+
+tags:
+  - name: Products
+    description: Operations with products
+
+paths:
+  # ---------- Products collection ----------
+  /api/products:
+    get:
+      tags: [Products]
+      summary: Get a page of products
+      operationId: getProducts
+      parameters:
+        - name: page
+          in: query
+          description: Zero-based page index
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: Number of products per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Page of products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+        '400':
+          description: Invalid page or size
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+    post:
+      tags: [Products]
+      summary: Create a product
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+      responses:
+        '201':
+          description: Product created
+          headers:
+            Location:
+              description: URI of the created product
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/products/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Product identifier
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [ Products ]
+      summary: Get a product by id
+      operationId: getProductById
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [ Products ]
+      summary: Update a product (creates it if it does not exist)
+      operationId: updateProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+      # Upsert: 201 if the product did not exist, 200 if it was updated
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '201':
+          description: Product did not exist and was created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    delete:
+      tags: [ Products ]
+      summary: Delete a product (idempotent)
+      operationId: deleteProduct
+      # Idempotent per lecture: no 404, deleting a missing product is still 204
+      responses:
+        '204':
+          description: Product deleted, or it was already absent
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  schemas:
+    ProductRequest:
+      type: object
+      required: [name, price, categoryId]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+          example: Galaxy antigravity yarn ball
+        description:
+          type: string
+          maxLength: 500
+        price:
+          type: number
+          multipleOf: 0.01
+          minimum: 0
+          exclusiveMinimum: true
+          example: 19.99
+        categoryId:
+          type: string
+          format: uuid
+    Product:
+      allOf:
+        - $ref: '#/components/schemas/ProductRequest'
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+              format: uuid
+    ProductPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+    ProblemDetail:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://cosmo-cats.market/errors/validation
+        title:
+          type: string
+          example: Validation failed
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: "Field 'price' must be greater than 0."
+        instance:
+          type: string
+          example: /api/products
+  responses:
+    BadRequest:
+      description: Invalid request (validation failed)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Conflict:
+      description: Product with this name already exists
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+
