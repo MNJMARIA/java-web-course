@@ -3,8 +3,11 @@ package com.cosmocats.cosmo_cats.mapper;
 import com.cosmocats.cosmo_cats.domain.Product;
 import com.cosmocats.cosmo_cats.dto.ProductRequest;
 import com.cosmocats.cosmo_cats.dto.ProductResponse;
+import com.cosmocats.cosmo_cats.domain.PageResult;
+import com.cosmocats.cosmo_cats.dto.ProductPageResponse;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -27,6 +30,19 @@ public class ProductMapper {
                 request.description(),
                 request.price(),
                 request.categoryId()
+        );
+    }
+
+    public ProductPageResponse toPageDto(PageResult<Product> result) {
+        List<ProductResponse> content = result.content().stream()
+                .map(this::toDto)
+                .toList();
+        return new ProductPageResponse(
+                content,
+                result.page(),
+                result.size(),
+                result.totalElements(),
+                result.totalPages()
         );
     }
 
