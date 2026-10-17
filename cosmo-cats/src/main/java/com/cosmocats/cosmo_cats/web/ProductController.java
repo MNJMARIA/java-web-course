@@ -6,6 +6,7 @@ import com.cosmocats.cosmo_cats.dto.ProductRequest;
 import com.cosmocats.cosmo_cats.dto.ProductResponse;
 import com.cosmocats.cosmo_cats.mapper.ProductMapper;
 import com.cosmocats.cosmo_cats.service.ProductService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,7 +39,8 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<ProductResponse> createProduct(@RequestBody ProductRequest request) {
+    public ResponseEntity<ProductResponse> createProduct(
+            @Valid @RequestBody ProductRequest request) {
         Product created = productService.create(productMapper.toDomain(request, UUID.randomUUID()));
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -50,7 +52,7 @@ public class ProductController {
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable UUID id,
-            @RequestBody ProductRequest request) {
+            @Valid @RequestBody ProductRequest request) {
         ProductService.UpsertResult result = productService.upsert(productMapper.toDomain(request, id));
         HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(productMapper.toDto(result.product()));

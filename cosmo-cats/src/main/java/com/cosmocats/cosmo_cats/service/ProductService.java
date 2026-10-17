@@ -2,6 +2,7 @@ package com.cosmocats.cosmo_cats.service;
 
 import com.cosmocats.cosmo_cats.domain.PageResult;
 import com.cosmocats.cosmo_cats.domain.Product;
+import com.cosmocats.cosmo_cats.exception.InvalidPageRequestException;
 import com.cosmocats.cosmo_cats.exception.ProductAlreadyExistsException;
 import com.cosmocats.cosmo_cats.exception.ProductNotFoundException;
 import org.springframework.stereotype.Service;
@@ -21,12 +22,9 @@ public class ProductService {
     public record UpsertResult(Product product, boolean created) {
     }
 
-    public Product create(Product product) {
-        boolean nameTaken = products.values().stream()
-                .anyMatch(existing -> existing.name().equalsIgnoreCase(product.name()));
-        if (nameTaken) {
-            throw new ProductAlreadyExistsException(product.name());
-        }
+    // synchronized: поки один запит виконує метод, інші чекають
+    public synchronized Product create(Product product) {
+        checkNameIsFree(product.name(), null);
         products.put(product.id(), product);
         return product;
     }
@@ -40,23 +38,50 @@ public class ProductService {
     }
 
     public PageResult<Product> findPage(int page, int size) {
+        // Межі беремо з контракту: page >= 0, size від 1 до 100
+        if (page < 0) {
+            throw new InvalidPageRequestException("Parameter 'page' must be 0 or greater.");
+        }
+        if (size < 1 || size > 100) {
+            throw new InvalidPageRequestException("Parameter 'size' must be between 1 and 100.");
+        }
+
+        // Сортуємо за назвою, щоб порядок не мінявся між запитами
         List<Product> all = products.values().stream()
                 .sorted(Comparator.comparing(Product::name))
                 .toList();
 
-        int from = Math.min(page * size, all.size());
+        // long, бо page * size у звичайному int може переповнитися
+        long offset = (long) page * size;
+        int from = (int) Math.min(offset, all.size());
         int to = Math.min(from + size, all.size());
-        int totalPages = (int) Math.ceil((double) all.size() / size);
+
+        // Ділення з округленням вгору: size тут точно >= 1, ділення на 0 неможливе
+        int totalPages = (all.size() + size - 1) / size;
 
         return new PageResult<>(all.subList(from, to), page, size, all.size(), totalPages);
     }
 
-    public UpsertResult upsert(Product product) {
+    public synchronized UpsertResult upsert(Product product) {
+        // product.id() передаємо, щоб оновлення продукту з його ж назвою не вважалося дублем
+        checkNameIsFree(product.name(), product.id());
         boolean created = products.put(product.id(), product) == null;
         return new UpsertResult(product, created);
     }
 
     public void delete(UUID id) {
         products.remove(id); // idempotent: no error if it was already absent
+    }
+
+
+    // Кидає 409, якщо назву вже має ІНШИЙ продукт
+    private void checkNameIsFree(String name, UUID ownId) {
+        for (Product existing : products.values()) {
+            boolean sameName = existing.name().equalsIgnoreCase(name);
+            boolean otherProduct = !existing.id().equals(ownId);
+            if (sameName && otherProduct) {
+                throw new ProductAlreadyExistsException(name);
+            }
+        }
     }
 }
