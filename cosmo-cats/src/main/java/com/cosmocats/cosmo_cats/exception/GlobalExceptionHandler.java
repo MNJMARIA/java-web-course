@@ -78,6 +78,14 @@ public class GlobalExceptionHandler {
                 "Request body is missing or is not valid JSON.", request);
     }
 
+    // Неправильні page або size -> 400
+    @ExceptionHandler(InvalidPageRequestException.class)
+    public ProblemDetail handleInvalidPage(InvalidPageRequestException ex,
+                                           HttpServletRequest request) {
+        return buildProblem(HttpStatus.BAD_REQUEST, "validation", "Validation failed",
+                ex.getMessage(), request);
+    }
+
 
     // Спільний метод: збирає відповідь з полів type, title, status, detail, instance
     private ProblemDetail buildProblem(HttpStatus status, String typeSlug, String title,

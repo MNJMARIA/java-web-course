@@ -2,6 +2,7 @@ package com.cosmocats.cosmo_cats.service;
 
 import com.cosmocats.cosmo_cats.domain.PageResult;
 import com.cosmocats.cosmo_cats.domain.Product;
+import com.cosmocats.cosmo_cats.exception.InvalidPageRequestException;
 import com.cosmocats.cosmo_cats.exception.ProductAlreadyExistsException;
 import com.cosmocats.cosmo_cats.exception.ProductNotFoundException;
 import org.springframework.stereotype.Service;
@@ -40,13 +41,26 @@ public class ProductService {
     }
 
     public PageResult<Product> findPage(int page, int size) {
+        // Межі беремо з контракту: page >= 0, size від 1 до 100
+        if (page < 0) {
+            throw new InvalidPageRequestException("Parameter 'page' must be 0 or greater.");
+        }
+        if (size < 1 || size > 100) {
+            throw new InvalidPageRequestException("Parameter 'size' must be between 1 and 100.");
+        }
+
+        // Сортуємо за назвою, щоб порядок не мінявся між запитами
         List<Product> all = products.values().stream()
                 .sorted(Comparator.comparing(Product::name))
                 .toList();
 
-        int from = Math.min(page * size, all.size());
+        // long, бо page * size у звичайному int може переповнитися
+        long offset = (long) page * size;
+        int from = (int) Math.min(offset, all.size());
         int to = Math.min(from + size, all.size());
-        int totalPages = (int) Math.ceil((double) all.size() / size);
+
+        // Ділення з округленням вгору: size тут точно >= 1, ділення на 0 неможливе
+        int totalPages = (all.size() + size - 1) / size;
 
         return new PageResult<>(all.subList(from, to), page, size, all.size(), totalPages);
     }
