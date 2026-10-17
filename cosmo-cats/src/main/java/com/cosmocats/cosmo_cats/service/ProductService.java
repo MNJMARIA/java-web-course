@@ -22,12 +22,9 @@ public class ProductService {
     public record UpsertResult(Product product, boolean created) {
     }
 
-    public Product create(Product product) {
-        boolean nameTaken = products.values().stream()
-                .anyMatch(existing -> existing.name().equalsIgnoreCase(product.name()));
-        if (nameTaken) {
-            throw new ProductAlreadyExistsException(product.name());
-        }
+    // synchronized: поки один запит виконує метод, інші чекають
+    public synchronized Product create(Product product) {
+        checkNameIsFree(product.name(), null);
         products.put(product.id(), product);
         return product;
     }
@@ -65,12 +62,26 @@ public class ProductService {
         return new PageResult<>(all.subList(from, to), page, size, all.size(), totalPages);
     }
 
-    public UpsertResult upsert(Product product) {
+    public synchronized UpsertResult upsert(Product product) {
+        // product.id() передаємо, щоб оновлення продукту з його ж назвою не вважалося дублем
+        checkNameIsFree(product.name(), product.id());
         boolean created = products.put(product.id(), product) == null;
         return new UpsertResult(product, created);
     }
 
     public void delete(UUID id) {
         products.remove(id); // idempotent: no error if it was already absent
+    }
+
+
+    // Кидає 409, якщо назву вже має ІНШИЙ продукт
+    private void checkNameIsFree(String name, UUID ownId) {
+        for (Product existing : products.values()) {
+            boolean sameName = existing.name().equalsIgnoreCase(name);
+            boolean otherProduct = !existing.id().equals(ownId);
+            if (sameName && otherProduct) {
+                throw new ProductAlreadyExistsException(name);
+            }
+        }
     }
 }

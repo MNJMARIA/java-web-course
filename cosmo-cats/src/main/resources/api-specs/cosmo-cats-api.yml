@@ -121,6 +121,8 @@ paths:
                 $ref: '#/components/schemas/Product'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
     delete:
       tags: [ Products ]
       summary: Delete a product (idempotent)
