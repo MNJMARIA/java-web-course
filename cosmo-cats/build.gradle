@@ -13,9 +13,21 @@ java {
 	}
 }
 
+ext {
+    // minimum line coverage in each file
+    minimumCoveragePerFile = 0.8
+    filesExcludedFromCoverage = [
+            "**/*Application.*",
+            "**/config/*Configuration.*"
+    ]
+}
+
 repositories {
 	mavenCentral()
 }
+
+apply from: "${rootProject.projectDir}/gradle/test.gradle"
+apply from: "${rootProject.projectDir}/gradle/jacoco.gradle"
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
