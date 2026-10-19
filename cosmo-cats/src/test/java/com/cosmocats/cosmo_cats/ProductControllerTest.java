@@ -208,7 +208,7 @@ class ProductControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-    // chaos-сценарії: помилка має бути у форматі RFC 9457
+    // нестандартні запити: помилка має бути у форматі RFC 9457
     @Test
     void shouldReturnProblemJsonForUnsupportedMethod() throws Exception {
         mockMvc.perform(patch("/api/products/{id}", UUID.randomUUID()))
