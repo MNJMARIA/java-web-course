@@ -9,6 +9,8 @@ import com.cosmocats.cosmo_cats.mapper.ProductMapper;
 import com.cosmocats.cosmo_cats.service.ProductService;
 import com.cosmocats.cosmo_cats.web.ProductController;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -181,5 +183,45 @@ class ProductControllerTest {
                         .content("not json"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Malformed request"));
+    }
+
+
+    // межі з контракту: ці довжини назви мають ПРОЙТИ
+    @ParameterizedTest(name = "name of {0} chars is valid")
+    @ValueSource(ints = {3, 100})
+    void shouldAcceptNameOnLengthBoundary(int length) throws Exception {
+        when(productService.create(any(Product.class))).thenAnswer(call -> call.getArgument(0));
+
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("a".repeat(length), "0.01")))
+                .andExpect(status().isCreated());
+    }
+
+    // а ці мають бути ВІДХИЛЕНІ
+    @ParameterizedTest(name = "name of {0} chars is invalid")
+    @ValueSource(ints = {2, 101})
+    void shouldRejectNameOutsideBoundary(int length) throws Exception {
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("a".repeat(length), "19.99")))
+                .andExpect(status().isBadRequest());
+    }
+
+    // chaos-сценарії: помилка має бути у форматі RFC 9457
+    @Test
+    void shouldReturnProblemJsonForUnsupportedMethod() throws Exception {
+        mockMvc.perform(patch("/api/products/{id}", UUID.randomUUID()))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+    }
+
+    @Test
+    void shouldReturnProblemJsonWhenContentTypeIsNotJson() throws Exception {
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("hello"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
     }
 }
