@@ -213,6 +213,7 @@ class ProductControllerTest {
     void shouldReturnProblemJsonForUnsupportedMethod() throws Exception {
         mockMvc.perform(patch("/api/products/{id}", UUID.randomUUID()))
                 .andExpect(status().isMethodNotAllowed())
+                .andExpect(header().exists("Allow"))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
     }
 
