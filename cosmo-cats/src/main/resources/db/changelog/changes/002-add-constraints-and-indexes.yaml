@@ -1,0 +1,32 @@
+databaseChangeLog:
+  # назва категорії унікальна
+  - changeSet:
+      id: 002-unique-category-name
+      author: maria
+      changes:
+        - addUniqueConstraint:
+            tableName: categories
+            columnNames: name
+            constraintName: uq_categories_name
+
+  # товар з такою назвою може бути лише один у межах однієї категорії
+  - changeSet:
+      id: 002-unique-product-name-in-category
+      author: maria
+      changes:
+        - addUniqueConstraint:
+            tableName: products
+            columnNames: name, category_id
+            constraintName: uq_products_name_category
+
+  # індекс для швидкого пошуку за назвою
+  - changeSet:
+      id: 002-index-product-name
+      author: maria
+      changes:
+        - createIndex:
+            tableName: products
+            indexName: idx_products_name
+            columns:
+              - column:
+                  name: name
