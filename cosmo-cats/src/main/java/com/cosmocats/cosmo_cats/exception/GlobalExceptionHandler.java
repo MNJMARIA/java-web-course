@@ -111,6 +111,14 @@ public class GlobalExceptionHandler {
                 "Unsupported media type", ex.getMessage(), request);
     }
 
+    // categoryId у запиті посилається на неіснуючу категорію -> 400
+    @ExceptionHandler(CategoryNotFoundException.class)
+    public ProblemDetail handleCategoryNotFound(CategoryNotFoundException ex,
+                                                HttpServletRequest request) {
+        return buildProblem(HttpStatus.BAD_REQUEST, "validation", "Validation failed",
+                ex.getMessage(), request);
+    }
+
 
     // Спільний метод: збирає відповідь з полів type, title, status, detail, instance
     private ProblemDetail buildProblem(HttpStatus status, String typeSlug, String title,

@@ -2,6 +2,7 @@ package com.cosmocats.cosmo_cats;
 
 import com.cosmocats.cosmo_cats.domain.PageResult;
 import com.cosmocats.cosmo_cats.domain.Product;
+import com.cosmocats.cosmo_cats.exception.CategoryNotFoundException;
 import com.cosmocats.cosmo_cats.exception.InvalidPageRequestException;
 import com.cosmocats.cosmo_cats.exception.ProductAlreadyExistsException;
 import com.cosmocats.cosmo_cats.exception.ProductNotFoundException;
@@ -224,5 +225,18 @@ class ProductControllerTest {
                         .content("hello"))
                 .andExpect(status().isUnsupportedMediaType())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+    }
+
+    @Test
+    void shouldReturn400WhenCategoryDoesNotExist() throws Exception {
+        UUID missingCategory = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6");
+        when(productService.create(any(Product.class)))
+                .thenThrow(new CategoryNotFoundException(missingCategory));
+
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("Galaxy yarn", "19.99")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"));
     }
 }

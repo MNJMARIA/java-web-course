@@ -1,0 +1,169 @@
+databaseChangeLog:
+  # sequence для id; крок 50 має збігатися з allocationSize у сутностях
+  - changeSet:
+      id: 001-create-sequences
+      author: maria
+      changes:
+        - createSequence:
+            sequenceName: category_id_seq
+            startValue: 1
+            incrementBy: 50
+        - createSequence:
+            sequenceName: product_id_seq
+            startValue: 1
+            incrementBy: 50
+        - createSequence:
+            sequenceName: orders_id_seq
+            startValue: 1
+            incrementBy: 50
+        - createSequence:
+            sequenceName: order_item_id_seq
+            startValue: 1
+            incrementBy: 50
+
+  - changeSet:
+      id: 001-create-categories
+      author: maria
+      changes:
+        - createTable:
+            tableName: categories
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: public_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 001-create-products
+      author: maria
+      changes:
+        - createTable:
+            tableName: products
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: public_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(500)
+              - column:
+                  name: price
+                  type: numeric(12,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_products_category
+                    references: categories(id)
+        # PostgreSQL сам не індексує зовнішні ключі, тому індекс додаємо вручну
+        - createIndex:
+            tableName: products
+            indexName: idx_products_category_id
+            columns:
+              - column:
+                  name: category_id
+
+  - changeSet:
+      id: 001-create-orders
+      author: maria
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: public_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: status
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 001-create-order-items
+      author: maria
+      changes:
+        - createTable:
+            tableName: order_items
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: order_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_order_items_order
+                    references: orders(id)
+              - column:
+                  name: product_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_order_items_product
+                    references: products(id)
+              - column:
+                  name: quantity
+                  type: int
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: order_items
+            indexName: idx_order_items_order_id
+            columns:
+              - column:
+                  name: order_id
+        - createIndex:
+            tableName: order_items
+            indexName: idx_order_items_product_id
+            columns:
+              - column:
+                  name: product_id
